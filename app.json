@@ -1,5 +1,6 @@
 {
   "name": "yui-bot",
   "description": "A Discord bot for my personal server that mostly serves memes",
-  "keywords": ["discord", "bot", "personal"]
+  "keywords": ["discord", "bot", "personal"],
+  "repository": "https://github.com/namdinh95/yui-bot"
 }
