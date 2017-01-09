@@ -17,6 +17,12 @@ const pool = new pg.Pool({
   max: 5,
   idleTimeoutMillis: 1000
 });
+
+// const pool = new pg.Pool({
+//   database: 'yuibot',
+//   max: 5,
+//   idleTimeoutMillis: 1000
+// });
 const manual = "```css\n" +
   "`help: Display this message\n" +
   "`add <command> <content>: Add a new command\n" +
@@ -123,16 +129,16 @@ client.on('message', msg => {
 client.on('disconnect', e => updateCommandList().catch(console.error));
 // Dev clean up code
 // Begin reading from stdin so the process does not exit
+var cleanUp = function() {
+  updateCommandList().then(res => {
+    pool.end();
+    process.exit();
+  });
+};
 process.stdin.resume();
-process.on('SIGINT', () => updateCommandList().then(res => {
-  pool.end();
-  process.exit();
-}));
+process.on('SIGINT', cleanUp);
+process.on('SIGTERM', cleanUp);
 
-// function updateCommandList() {
-//   jsonFileIO.writeFileSync(commandListFile, commandList);
-//   console.log('\nSuccessfully updated command list');
-// }
 function updateCommandList() {
   return new Promise((fulfill, reject) => {
     pool.connect((error, client, done) => {
