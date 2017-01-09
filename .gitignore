@@ -6,3 +6,7 @@ npm-debug.log
 *.env
 *.dev
 .DS_Store
+
+# Dev files
+test.js
+backup/

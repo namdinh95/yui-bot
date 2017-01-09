@@ -3,7 +3,12 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const jsonFileIO = require('jsonfile');
-const commandListFile = './commandList.json'; 
+const pg = require('pg');
+const pool = new pg.Pool({
+  database: process.env.DATABASE_URL,
+  max: 5,
+  idleTimeoutMillis: 1000
+});
 const manual = "```css\n" +
   "`help: Display this message\n" +
   "`add <command> <content>: Add a new command\n" +
@@ -13,9 +18,23 @@ const manual = "```css\n" +
 const announcementID = process.env.ANNOUNCEMENT_ID;
 
 const prefix = '`';
-// Load the command list from disk
-var commandList = jsonFileIO.readFileSync(commandListFile);
+var commandList = null;
 
+// Connect to PostgreSQL
+pool.connect((err, client, done) => {
+  if (err) throw err;
+  console.log('Connect to db successful');
+  // Load the command list from db
+  client.query('SELECT * FROM custom_commands')
+    .then(res => {
+      commandList = res.rows[0].commands;
+      done();
+    });
+});
+pool.on('error', console.error);
+
+
+client.login(process.env.TOKEN);
 client.on('ready', () => {
   console.log("I'm ready!");
 });
@@ -87,24 +106,41 @@ client.on('message', msg => {
         message += command + ': ' + commandList[command] + '\n';
     }
     message += "```";
-    client.channels.get(announcementID).sendMessage(message);
+    client.channels.get(announcementID).sendMessage(message)
+      .catch(console.error);
   }
 });
 
 // Clean up code
-client.on('disconnect', e => updateCommandList());
+client.on('disconnect', e => updateCommandList().catch(console.error));
 // Dev clean up code
 // Begin reading from stdin so the process does not exit
 process.stdin.resume();
-process.on('SIGINT', () => {
-  updateCommandList();
+process.on('SIGINT', () => updateCommandList().then(res => {
+  pool.end();
   process.exit();
-});
+}));
 
-client.login(process.env.TOKEN);
-
-
+// function updateCommandList() {
+//   jsonFileIO.writeFileSync(commandListFile, commandList);
+//   console.log('\nSuccessfully updated command list');
+// }
 function updateCommandList() {
-  jsonFileIO.writeFileSync(commandListFile, commandList);
-  console.log('\nSuccessfully updated command list');
+  return new Promise((fulfill, reject) => {
+    pool.connect((error, client, done) => {
+      if (error) reject(error);
+      client.query(
+        'UPDATE custom_commands SET commands = $1',
+        [JSON.stringify(commandList)],
+        (err, res) => {
+          if (err) reject(err);
+          else {
+            console.log('\nSuccessfully updated command list');
+            done();
+            fulfill(res);
+          }
+        }
+      );
+    });
+  });
 }
