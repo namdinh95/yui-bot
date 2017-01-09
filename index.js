@@ -2,10 +2,18 @@
 
 const Discord = require('discord.js');
 const client = new Discord.Client();
-const jsonFileIO = require('jsonfile');
+
 const pg = require('pg');
+const url = require('url');
+const params = url.parse(process.env.DATABASE_URL);
+const auth = params.auth.split(':');
 const pool = new pg.Pool({
-  database: process.env.DATABASE_URL,
+  user: auth[0],
+  password: auth[1],
+  host: params.hostname,
+  port: params.port,
+  database: params.pathname.split('/')[1],
+  ssl: true,
   max: 5,
   idleTimeoutMillis: 1000
 });
